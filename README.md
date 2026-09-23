@@ -8,7 +8,8 @@ An evidence-grounded, multi-turn AI career copilot that bridges the gap between 
 
 The core principle enforced end-to-end: **No claim is made or target role recommended unless it is directly grounded in verifiable, cited evidence provided by the user.**
 
-![Pivot Career Copilot Interface](assets/app_demo.jpg)
+![Pivot Career Copilot Live Demo](assets/agent_demo.gif)
+<p align="center"><sub>Live demonstration recorded via Playwright: Multi-turn career tier targeting, live job searches, and generative assets.</sub></p>
 
 ---
 
@@ -51,6 +52,7 @@ Pivot Career Copilot replaces unstructured chat transcripts with typed Firestore
 | **Rich Generative UI** | A2UI v0.8 (`a2ui-agent-sdk`) | Structured JSON layout engine rendering native cards, columns, and metric pills. |
 | **Persistent Storage** | Cloud Firestore (Native Mode) | Strongly typed database for `intake_profile`, `target_tiers`, and `shortlist`. |
 | **PII & File Storage** | Google Cloud Storage (GCS) | Private bucket accessed strictly via Signed URLs to protect résumé PII. |
+| **Generative Media** | `gemini-3.1-flash-lite-image` & `gemini-omni-flash-preview` | Dynamic generation of milestone badges and cinematic 3D motion videos with direct Cloud Storage upload. |
 | **Application Delivery** | Google Cloud Run | Serverless container hosting the FastAPI backend proxy and responsive UI. |
 | **Agent Tooling** | Model Context Protocol (MCP) | Integrated Developer Knowledge MCP and Firebase MCP during build. |
 

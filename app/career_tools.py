@@ -659,3 +659,117 @@ async def generate_career_visual_asset(
         return {"status": "error", "message": f"Failed generating image: {e}"}
 
 
+
+async def generate_career_video_asset(
+    item_name: str,
+    asset_type: str = "motion_badge",
+    tool_context: Optional[ToolContext] = None,
+) -> Dict[str, Any]:
+    """Generates a short video for a career domain item using Google's Omni model (gemini-omni-flash-preview) in the global region.
+
+    Saves the video via tool_context.save_artifact for the Playground's Artifacts panel,
+    and uploads the video bytes directly to the public Cloud Storage bucket, returning its public HTTPS URL.
+    Hardcodes the bucket name and GCP project as strings without writing to a local file.
+
+    Args:
+        item_name: Target career role or milestone (e.g. 'AI Solutions Architect', 'Cloud Platform Lead').
+        asset_type: Type of motion asset ('motion_badge', 'transition_teaser', 'milestone_celebration'). Defaults to 'motion_badge'.
+        tool_context: ADK ToolContext injected by the framework for saving artifacts.
+
+    Returns:
+        Structured response with the public Cloud Storage HTTPS URL, GCS URI, and artifact details.
+    """
+    import base64
+    import google.auth
+    import google.auth.transport.requests
+    import requests
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", item_name.lower())
+    timestamp = int(datetime.datetime.now().timestamp())
+    artifact_filename = f"{safe_name}_{asset_type}_{timestamp}.mp4"
+
+    prompt = (
+        f"A 4-second cinematic motion graphics video of a glowing modern 3D tech badge "
+        f"rotating smoothly for '{item_name}'. Professional aesthetic, vibrant neon accents, "
+        f"clean typography, dark sleek background, smooth looping motion."
+    )
+
+    try:
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+
+        url = "https://aiplatform.googleapis.com/v1beta1/projects/qwiklabs-gcp-04-2479ded67a3b/locations/global/interactions"
+        headers = {
+            "Authorization": f"Bearer {creds.token}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": "gemini-omni-flash-preview",
+            "input": [
+                {
+                    "type": "text",
+                    "text": prompt,
+                }
+            ],
+        }
+
+        res = requests.post(url, headers=headers, json=payload, timeout=180)
+        if res.status_code != 200:
+            return {"status": "error", "message": f"Omni API returned status {res.status_code}: {res.text}"}
+
+        data = res.json()
+        video_bytes = None
+        mime_type = "video/mp4"
+
+        for step in data.get("steps", []):
+            for c in step.get("content", []):
+                if c.get("type") == "video" and "data" in c:
+                    video_bytes = base64.b64decode(c["data"])
+                    mime_type = c.get("mime_type") or "video/mp4"
+                    break
+            if video_bytes:
+                break
+
+        if not video_bytes:
+            return {"status": "error", "message": "Model response did not contain video bytes."}
+
+        # (1) Save with tool_context.save_artifact for Playground Artifacts panel
+        saved_in_artifacts = False
+        if tool_context is not None and hasattr(tool_context, "save_artifact"):
+            try:
+                part_artifact = types.Part.from_bytes(data=video_bytes, mime_type=mime_type)
+                await tool_context.save_artifact(filename=artifact_filename, artifact=part_artifact)
+                saved_in_artifacts = True
+            except TypeError:
+                try:
+                    await tool_context.save_artifact(filename=artifact_filename, data=video_bytes, mime_type=mime_type)
+                    saved_in_artifacts = True
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        # (2) Upload same video bytes to the public Cloud Storage bucket (hardcoded string)
+        storage_client = storage.Client(project="qwiklabs-gcp-04-2479ded67a3b")
+        bucket = storage_client.bucket("pivot-career-copilot-files")
+
+        blob_path = f"visuals/{artifact_filename}"
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(video_bytes, content_type=mime_type)
+
+        public_url = f"https://storage.googleapis.com/pivot-career-copilot-files/{blob_path}"
+
+        return {
+            "status": "success",
+            "item_name": item_name,
+            "asset_type": asset_type,
+            "artifact_filename": artifact_filename,
+            "saved_in_playground_artifacts": saved_in_artifacts,
+            "bucket": "pivot-career-copilot-files",
+            "object_path": blob_path,
+            "gcs_uri": f"gs://pivot-career-copilot-files/{blob_path}",
+            "public_url": public_url,
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Failed generating video with Omni model: {e}"}
