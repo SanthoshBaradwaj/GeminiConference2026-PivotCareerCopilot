@@ -11,6 +11,10 @@ The core principle enforced end-to-end: **No claim is made or target role recomm
 ![Pivot Career Copilot Live Demo](assets/agent_demo.gif)
 <p align="center"><sub>Live demonstration recorded via Playwright: Multi-turn career tier targeting, live job searches, and generative assets.</sub></p>
 
+### ADK Developer Workbench Preview (`localhost:8080`)
+![ADK Dev UI Workbench & Profile](assets/playground_profile.jpg)
+<p align="center"><sub>Live profile evaluation, Memory Bank state, and tool orchestration in the ADK Web Dev UI.</sub></p>
+
 ---
 
 ## 1. System Architecture & Core Concept
